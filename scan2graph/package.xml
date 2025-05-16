@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>ros2_lidar_pkgs</name>
+  <name>scan2graph</name>
   <version>0.1.0</version>
   <description>LiDAR Graph construction for ROS2</description>
   <maintainer email="your_email@example.com">Your Name</maintainer>
