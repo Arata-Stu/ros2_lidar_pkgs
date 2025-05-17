@@ -12,17 +12,17 @@
     <!-- フィルタチェーンを YAML から読み込み -->
     <param from="$(var filter_param)"/>
     <!-- 必要に応じてトピック名を remap -->
-    <remap from="input_scan"  to="/scan"/>
-    <remap from="output_scan" to="/filtered_scan"/>
+    <remap from="/scan"  to="/scan"/>
+    <remap from="/scan_filtered" to="/scan_filtered"/>
   </node>
 
   <!-- Lidar Graph Node -->
   <node pkg="scan2graph" exec="lidar_graph_node" name="lidar_graph_node" output="screen">
     <param from="$(var graph_param)"/>
-    <remap from="scan" to="/filtered_scan"/>
-    <remap from="lidar_edges" to="/lidar_edges_marker"/>
+    <remap from="/scan" to="/scan_filtered"/>
+    <remap from="/lidar_edges" to="/lidar_edges_marker"/>
   </node>
-  
+
   <!-- GNN Node -->
   <node pkg="gnn_node" exec="gnn_node" name="gnn_node" output="screen">
     <param from="$(var gnn_param)"/>
