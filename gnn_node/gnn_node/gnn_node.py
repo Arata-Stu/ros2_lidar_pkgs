@@ -67,7 +67,6 @@ class GNNnode(Node):
 
         # モデルの推論
         output = self.model(data)
-        self.get_logger().info(f"Model output: {output}")
 
         # steer, speed を clamp → float に変換
         steer = output[0, 0].clamp(-1.0, 1.0).item()
