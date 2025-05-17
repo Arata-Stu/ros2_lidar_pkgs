@@ -1,15 +1,30 @@
 <launch>
-  <arg name="graph_param" default="$(find-pkg-share scan2graph)/config/scan2graph.param.yaml"/>
-  <arg name="gnn_param" default="$(find-pkg-share gnn_node)/config/model.param.yaml"/>
+  <!-- パラメータ -->
+  <arg name="graph_param"  default="$(find-pkg-share scan2graph)/config/scan2graph.param.yaml"/>
+  <arg name="gnn_param"    default="$(find-pkg-share gnn_node)/config/model.param.yaml"/>
+  <arg name="filter_param" default="$(find-pkg-share lidar_pkg_launch)/config/filter.param.yaml"/>
 
-<!-- Lidar Graph Node -->
-  <node pkg="scan2graph" exec="lidar_graph_node" name="lidar_graph_node" output="screen">
-    <param from="$(var graph_param)"/>
+  <!-- Laser Filter Node -->
+  <node pkg="laser_filters"
+        exec="scan_to_scan_filter_chain"
+        name="scan_filter"
+        output="screen">
+    <!-- フィルタチェーンを YAML から読み込み -->
+    <param from="$(var filter_param)"/>
+    <!-- 必要に応じてトピック名を remap -->
+    <remap from="input_scan"  to="/scan"/>
+    <remap from="output_scan" to="/filtered_scan"/>
   </node>
 
-<!-- GNN Node -->
+  <!-- Lidar Graph Node -->
+  <node pkg="scan2graph" exec="lidar_graph_node" name="lidar_graph_node" output="screen">
+    <param from="$(var graph_param)"/>
+    <remap from="scan" to="/filtered_scan"/>
+    <remap from="lidar_edges" to="/lidar_edges_marker"/>
+  </node>
+  
+  <!-- GNN Node -->
   <node pkg="gnn_node" exec="gnn_node" name="gnn_node" output="screen">
     <param from="$(var gnn_param)"/>
   </node>
-
 </launch>
