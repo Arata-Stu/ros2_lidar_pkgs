@@ -1,6 +1,6 @@
-from .gnn import N4LidarGCN
+from .gnn import ModularLidarGCN, ModularLidarSplineGCN
 
-def build_model(model_name, input_dim, hidden_dim, output_dim, pool_method="mean"):
+def build_model(model_name, input_dim, hidden_dim, output_dim, num_layers=4, pool_method="mean"):
     """
     モデルをビルドして返します。
 
@@ -13,7 +13,9 @@ def build_model(model_name, input_dim, hidden_dim, output_dim, pool_method="mean
     Returns:
         torch.nn.Module: 指定したモデルのインスタンス
     """
-    if model_name == "n4_lidar_gcn":
-        return N4LidarGCN(input_dim, hidden_dim, output_dim, pool_method)
+    if model_name == "gcn":
+        return ModularLidarGCN(input_dim, hidden_dim, output_dim, num_layers, pool_method)
+    elif model_name == "spline_gcn":
+        return ModularLidarSplineGCN(input_dim, hidden_dim, output_dim, num_layers, pool_method, kernel_size=3)
     else:
         raise ValueError(f"指定されたモデル名 '{model_name}' は存在しません。")
