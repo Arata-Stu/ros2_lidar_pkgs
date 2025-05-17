@@ -2,7 +2,6 @@ import rclpy
 from rclpy.node import Node
 from lidar_graph_msgs.msg import GraphData
 from ackermann_msgs.msg import AckermannDrive
-from ament_index_python.packages import get_package_share_directory
 import torch
 from torch_geometric.data import Data
 
@@ -68,20 +67,25 @@ class GNNnode(Node):
 
         # モデルの推論
         output = self.model(data)
-
-        # 出力の確認
         self.get_logger().info(f"Model output: {output}")
+
+        # steer, speed を clamp → float に変換
+        steer = output[0, 0].clamp(-1.0, 1.0).item()
+        speed = output[0, 1].clamp(0.0, 1.0).item()
 
         # AckermannDrive メッセージの作成
         drive_msg = AckermannDrive()
-
-        # steer と speed の設定
-        drive_msg.steering_angle = float(max(min(output[0].item(), 1.0), -1.0))
-        drive_msg.speed = float(max(min(output[1].item(), 1.0), -1.0))
+        drive_msg.steering_angle = steer
+        drive_msg.speed = speed
 
         # パブリッシュ
         self.publisher.publish(drive_msg)
-        self.get_logger().info(f"Published AckermannDrive: Steering={drive_msg.steering_angle}, Speed={drive_msg.speed}")
+
+        # デバッグモードなら publish 情報を出力
+        if self.debug_mode:
+            self.get_logger().info(f"[DEBUG] Published AckermannDrive: Steering={steer}, Speed={speed}")
+        else:
+            self.get_logger().info(f"Published AckermannDrive: Steering={steer}, Speed={speed}")
 
 
 def main(args=None):
