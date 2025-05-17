@@ -1,1 +1,1 @@
-from .gnn import N4LidarGCN
+from .models import build_model

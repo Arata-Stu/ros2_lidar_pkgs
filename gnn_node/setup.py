@@ -26,7 +26,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'graph_subscriber_node = gnn_node.graph_subscriber_node:main',
+            'gnn_node = gnn_node.gnn_node:main',
         ],
     },
 )
