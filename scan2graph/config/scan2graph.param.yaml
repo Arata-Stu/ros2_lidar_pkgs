@@ -1,0 +1,6 @@
+/**:
+  ros__parameters:
+    edge_threshold: 1.0
+    fov: 270 ## FOV
+    debug_mode: False ## グラフをマーカで可視化
+    

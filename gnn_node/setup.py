@@ -1,16 +1,21 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 package_name = 'gnn_node'
 
 setup(
     name=package_name,
     version='0.1.0',
-    packages=[package_name],
+    packages=find_packages(),  # ここでgnn_node配下のすべてのパッケージを自動検出
     data_files=[
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-    install_requires=['setuptools'],
+    install_requires=[
+        'setuptools',
+        'torch',
+        'torch-geometric',
+        'rclpy',
+    ],
     zip_safe=True,
     maintainer='Your Name',
     maintainer_email='your_email@example.com',
