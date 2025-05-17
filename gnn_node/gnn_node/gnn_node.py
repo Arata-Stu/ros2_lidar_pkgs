@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from lidar_graph_msgs.msg import GraphData
+from ackermann_msgs.msg import AckermannDrive
 from ament_index_python.packages import get_package_share_directory
 import torch
 from torch_geometric.data import Data
@@ -12,9 +13,10 @@ class GNNnode(Node):
     def __init__(self):
         super().__init__('gnn_node')
 
+        # パラメータの宣言
         self.declare_parameter('model_name', 'default_model')
         self.declare_parameter('input_dim', 2)
-        self.declare_parameter('output_dim', 2)
+        self.declare_parameter('output_dim', 2)  # steer, speed
         self.declare_parameter('hidden_dim', 64)
         self.declare_parameter('debug_mode', False)
 
@@ -28,6 +30,7 @@ class GNNnode(Node):
         # モデルの初期化
         self.model = build_model(self.model_name, self.input_dim, self.hidden_dim, self.output_dim)
 
+        # トピックの購読設定
         self.subscription = self.create_subscription(
             GraphData,
             '/lidar_graph',
@@ -36,6 +39,9 @@ class GNNnode(Node):
         )
         self.subscription  # prevent unused variable warning
         self.get_logger().info(f"gnn_node has been started with model: {self.model_name}")
+
+        # パブリッシャーの初期化
+        self.publisher = self.create_publisher(AckermannDrive, '/cmd_drive', 10)
 
     def graph_callback(self, msg):
         self.get_logger().info(f"GraphData received: Nodes={len(msg.node_x)}, Edges={len(msg.edge_from)}")
@@ -62,7 +68,20 @@ class GNNnode(Node):
 
         # モデルの推論
         output = self.model(data)
+
+        # 出力の確認
         self.get_logger().info(f"Model output: {output}")
+
+        # AckermannDrive メッセージの作成
+        drive_msg = AckermannDrive()
+
+        # steer と speed の設定
+        drive_msg.steering_angle = float(max(min(output[0].item(), 1.0), -1.0))
+        drive_msg.speed = float(max(min(output[1].item(), 1.0), -1.0))
+
+        # パブリッシュ
+        self.publisher.publish(drive_msg)
+        self.get_logger().info(f"Published AckermannDrive: Steering={drive_msg.steering_angle}, Speed={drive_msg.speed}")
 
 
 def main(args=None):
