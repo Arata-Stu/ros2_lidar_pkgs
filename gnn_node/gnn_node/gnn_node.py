@@ -103,7 +103,8 @@ class GNNnode(Node):
         drive_msg.steering_angle = steer
         drive_msg.speed = speed
         self.publisher.publish(drive_msg)
-        self.get_logger().info(f"Published: steer={steer:.3f}, speed={speed:.3f}")
+        if self.debug_mode:
+            self.get_logger().info(f"Published: steer={steer:.3f}, speed={speed:.3f}")
 
 def main(args=None):
     rclpy.init(args=args)
