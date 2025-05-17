@@ -22,7 +22,6 @@ setup(
         'setuptools',
         'torch',
         'torch-geometric',
-        'PyYAML',
     ],
     zip_safe=True,
     maintainer='Your Name',

@@ -4,8 +4,6 @@ from lidar_graph_msgs.msg import GraphData
 from ament_index_python.packages import get_package_share_directory
 import torch
 from torch_geometric.data import Data
-import yaml
-import os
 
 from gnn_node.models import build_model
 
