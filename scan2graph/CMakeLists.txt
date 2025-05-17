@@ -28,4 +28,9 @@ ament_target_dependencies(lidar_graph_node
 install(TARGETS lidar_graph_node
   DESTINATION lib/${PROJECT_NAME})
 
+install(DIRECTORY
+  config
+  DESTINATION share/${PROJECT_NAME})  
+
+
 ament_package()
