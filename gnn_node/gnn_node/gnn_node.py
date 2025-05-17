@@ -25,6 +25,10 @@ class GNNnode(Node):
         # パラメータ取得
         self._load_parameters()
 
+        # デバイスの設定
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.get_logger().info(f"使用デバイス: {self.device}")
+
         # モデルの初期化
         self._build_model()
 
@@ -60,7 +64,7 @@ class GNNnode(Node):
             self.input_dim,
             self.hidden_dim,
             self.output_dim
-        )
+        ).to(self.device)  # ここでGPUに転送
         self.get_logger().info(f"[MODEL] 再構築: {self.model_name}, hidden={self.hidden_dim}")
 
     def _on_param_change(self, params):
@@ -83,34 +87,43 @@ class GNNnode(Node):
         return result
 
     def graph_callback(self, msg):
-        # …（既存の callback 実装）…
-        x = torch.tensor(list(zip(msg.node_x, msg.node_y)), dtype=torch.float)
-        edge_index = torch.tensor([msg.edge_from, msg.edge_to], dtype=torch.long)
+        # ノードとエッジ情報をGPUに転送
+        x = torch.tensor(list(zip(msg.node_x, msg.node_y)), dtype=torch.float).to(self.device)
+        edge_index = torch.tensor([msg.edge_from, msg.edge_to], dtype=torch.long).to(self.device)
+
         if msg.edge_weight:
-            data = Data(x=x, edge_index=edge_index,
-                        edge_attr=torch.tensor(msg.edge_weight, dtype=torch.float))
+            edge_attr = torch.tensor(msg.edge_weight, dtype=torch.float).to(self.device)
+            data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
         else:
             data = Data(x=x, edge_index=edge_index)
 
         if self.debug_mode:
             self.get_logger().info(f"[DEBUG] data={data}")
 
-        output = self.model(data)
-        steer = output[0, 0].clamp(-1.0, 1.0).item()
-        speed = output[0, 1].clamp(0.0, 1.0).item()
+        # GPU推論を無効化してメモリ最適化
+        with torch.no_grad():
+            output = self.model(data)
 
+        # CPUに戻して値を取得
+        steer = output[0, 0].clamp(-1.0, 1.0).cpu().item()
+        speed = output[0, 1].clamp(0.0, 1.0).cpu().item()
+
+        # Ackermann メッセージの生成とパブリッシュ
         drive_msg = AckermannDrive()
         drive_msg.steering_angle = steer
         drive_msg.speed = speed
         self.publisher.publish(drive_msg)
+
         if self.debug_mode:
             self.get_logger().info(f"Published: steer={steer:.3f}, speed={speed:.3f}")
+
 
 def main(args=None):
     rclpy.init(args=args)
     node = GNNnode()
     rclpy.spin(node)
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
