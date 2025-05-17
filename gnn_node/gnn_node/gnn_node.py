@@ -14,6 +14,12 @@ class GNNnode(Node):
     def __init__(self):
         super().__init__('gnn_node')
 
+        self.declare_parameter('model_name', 'default_model')
+        self.declare_parameter('input_dim', 2)
+        self.declare_parameter('output_dim', 2)
+        self.declare_parameter('hidden_dim', 64)
+        self.declare_parameter('debug_mode', False)
+
         # パラメータの取得
         self.model_name = self.get_parameter('model_name').value
         self.input_dim = self.get_parameter('input_dim').value
