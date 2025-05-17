@@ -1,0 +1,15 @@
+<launch>
+  <arg name="graph_param" default="$(find-pkg-share scan2graph)/config/scan2graph.param.yaml"/>
+  <arg name="gnn_param" default="$(find-pkg-share gnn_node)/config/model.param.yaml"/>
+
+<!-- Lidar Graph Node -->
+  <node pkg="scan2graph" exec="lidar_graph_node" name="lidar_graph_node" output="screen">
+    <param from="$(var graph_param)"/>
+  </node>
+
+<!-- GNN Node -->
+  <node pkg="gnn_node" exec="gnn_node" name="gnn_node" output="screen">
+    <param from="$(var gnn_param)"/>
+  </node>
+
+</launch>
