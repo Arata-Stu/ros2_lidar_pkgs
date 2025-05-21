@@ -3,4 +3,6 @@
     edge_threshold: 1.0
     fov: 270.0 ## FOV
     debug_mode: False ## グラフをマーカで可視化
+    k_neighbors: 3 ## k近傍法のk
+    use_knn: True ## k近傍法を使用するか True: k近傍 False: 全探索
     

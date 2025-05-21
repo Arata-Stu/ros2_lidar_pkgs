@@ -4,6 +4,7 @@
 #include <lidar_graph_msgs/msg/graph_data.hpp>
 #include <vector>
 #include <cmath>
+#include <algorithm>
 
 #define DEG2RAD (M_PI / 180.0)
 #define MAX_EDGES_PER_NODE 5
@@ -25,15 +26,17 @@ public:
 class LidarGraphNode : public rclcpp::Node {
 public:
     LidarGraphNode() : rclcpp::Node("lidar_graph_node") {
-        // パラメータの宣言
         this->declare_parameter<double>("edge_threshold", 1.0);
         this->declare_parameter<double>("fov", 270.0);
         this->declare_parameter<bool>("debug_mode", false);
+        this->declare_parameter<int>("k_neighbors", 3);
+        this->declare_parameter<bool>("use_knn", true);
 
-        // パラメータの取得
         this->get_parameter("edge_threshold", edge_threshold_);
         this->get_parameter("fov", fov_);
         this->get_parameter("debug_mode", debug_mode_);
+        this->get_parameter("k_neighbors", k_neighbors_);
+        this->get_parameter("use_knn", use_knn_);
 
         subscription_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
             "/scan", 10,
@@ -49,17 +52,15 @@ public:
         );
 
         RCLCPP_INFO(this->get_logger(), "LidarGraphNode has been started.");
-        if (debug_mode_) {
-            RCLCPP_INFO(this->get_logger(), "Debug Mode: Enabled");
-        }
     }
 
 private:
     void scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
-        // 最新のパラメータ値を取得
         this->get_parameter("edge_threshold", edge_threshold_);
         this->get_parameter("fov", fov_);
         this->get_parameter("debug_mode", debug_mode_);
+        this->get_parameter("k_neighbors", k_neighbors_);
+        this->get_parameter("use_knn", use_knn_);
 
         int num_nodes = msg->ranges.size();
         double angle_increment = fov_ / num_nodes;
@@ -68,37 +69,32 @@ private:
         edges.clear();
         edge_counts = 0;
 
-        if (debug_mode_) {
-            RCLCPP_INFO(this->get_logger(), "Number of nodes: %d", num_nodes);
-            RCLCPP_INFO(this->get_logger(), "Angle increment: %f", angle_increment);
-        }
-
-        // ノードの位置を計算
         for (int i = 0; i < num_nodes; ++i) {
             double dist = msg->ranges[i];
             double angle = (-fov_ / 2.0 + i * angle_increment) * DEG2RAD;
             nodes.emplace_back(dist * cos(angle), dist * sin(angle));
-
-            if (debug_mode_) {
-                RCLCPP_INFO(this->get_logger(), "Node[%d]: (x: %f, y: %f)", i, nodes.back().x, nodes.back().y);
-            }
         }
 
-        // エッジの構築
-        for (int i = 0; i < num_nodes - 1; ++i) {
-            double dx = nodes[i + 1].x - nodes[i].x;
-            double dy = nodes[i + 1].y - nodes[i].y;
-            double d = std::sqrt(dx * dx + dy * dy);
-            if (d < edge_threshold_) {
-                edges.emplace_back(i, i + 1, d);
-
-                if (debug_mode_) {
-                    RCLCPP_INFO(this->get_logger(), "Edge[%d]: (%d -> %d), Distance: %f", edge_counts, i, i + 1, d);
+        for (int i = 0; i < num_nodes; ++i) {
+            std::vector<std::pair<double, int>> distances;
+            for (int j = 0; j < num_nodes; ++j) {
+                if (i == j) continue;
+                double dx = nodes[j].x - nodes[i].x;
+                double dy = nodes[j].y - nodes[i].y;
+                double d = std::sqrt(dx * dx + dy * dy);
+                if (d < edge_threshold_) {
+                    distances.emplace_back(d, j);
                 }
             }
+
+            std::sort(distances.begin(), distances.end());
+
+            int max_edges = use_knn_ ? std::min(k_neighbors_, static_cast<int>(distances.size())) : distances.size();
+            for (int k = 0; k < max_edges; ++k) {
+                edges.emplace_back(i, distances[k].second, distances[k].first);
+            }
         }
 
-        // データをパブリッシュ
         publish_edges();
         publish_graph_data();
     }
@@ -106,12 +102,13 @@ private:
     void publish_edges() {
         visualization_msgs::msg::MarkerArray marker_array;
 
+        int id_counter = 0;
         for (const auto &edge : edges) {
             visualization_msgs::msg::Marker marker;
             marker.header.frame_id = "laser";
             marker.header.stamp = this->now();
             marker.ns = "lidar_edges";
-            marker.id = edge_counts++;
+            marker.id = id_counter++;
             marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
             marker.action = visualization_msgs::msg::Marker::ADD;
             marker.scale.x = 0.02;
@@ -138,13 +135,11 @@ private:
     void publish_graph_data() {
         lidar_graph_msgs::msg::GraphData msg;
 
-        // ノード座標
         for (const auto &node : nodes) {
             msg.node_x.push_back(node.x);
             msg.node_y.push_back(node.y);
         }
 
-        // エッジ情報
         for (const auto &edge : edges) {
             msg.edge_from.push_back(edge.from);
             msg.edge_to.push_back(edge.to);
@@ -165,10 +160,11 @@ private:
     std::vector<Edge> edges;
     int edge_counts;
 
-    // 動的パラメータ
     double edge_threshold_;
     double fov_;
     bool debug_mode_;
+    int k_neighbors_;
+    bool use_knn_;
 };
 
 int main(int argc, char **argv) {
